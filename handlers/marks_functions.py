@@ -47,15 +47,20 @@ async def _confirm_person(call, callback_data):
     index = int(callback_data.get('index'))
     surname = df['Full Name'][index].split()[0]
     response = get_response(index, SUBJECTS_URL)
-    soup = BeautifulSoup(response.content, features='lxml')
-    tags = [x.contents[1].contents[0] for x in soup.find_all('tr', {"data-year": data_year})]
-    subjects = [x.text[:x.text.find(', Бакалавр')] for x in tags]
-    if not subjects:
-        text = f'Invalid login or password for {fmt.hbold(surname)}'
+    if response.status_code == 404:
+        text = fmt.hbold('Campus is currently unavailable')
         subjects_links = []
+        subjects = []
     else:
-        text = f'Choose the subject for {fmt.hbold(surname)}:'
-        subjects_links = [x.get('href') for x in tags]
+        soup = BeautifulSoup(response.content, features='lxml')
+        tags = [x.contents[1].contents[0] for x in soup.find_all('tr', {"data-year": data_year})]
+        subjects = [x.text[:x.text.find(', Бакалавр')] for x in tags]
+        if not subjects:
+            text = f'Invalid login or password for {fmt.hbold(surname)}'
+            subjects_links = []
+        else:
+            text = f'Choose the subject for {fmt.hbold(surname)}:'
+            subjects_links = [x.get('href') for x in tags]
     reply_markup = get_subjects_keyboard(subjects, subjects_links, index)
     await call.message.edit_text(text=text,
                                  reply_markup=reply_markup)
